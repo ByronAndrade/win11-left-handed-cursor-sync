@@ -4,6 +4,8 @@ Automatically flips the Windows mouse cursor when the primary mouse button is se
 
 This project exists for left-handed mouse users who want the pointer direction to match the actual primary button setting.
 
+![Demo](./docs/demo.gif)
+
 ## What problem does this solve?
 
 Windows lets you swap the primary mouse button, but the standard arrow cursor still points the same way.
@@ -45,6 +47,14 @@ Right now, it syncs the main arrow cursor (`Arrow`), which is the part most peop
 
 1. Download this repository as a ZIP.
 2. Extract it somewhere convenient.
+3. Double-click `install.cmd`.
+
+That is the easiest install path for most people.
+
+### Option 2: Run the PowerShell installer manually
+
+1. Download this repository as a ZIP.
+2. Extract it somewhere convenient.
 3. Open PowerShell in that folder.
 4. Run:
 
@@ -52,7 +62,7 @@ Right now, it syncs the main arrow cursor (`Arrow`), which is the part most peop
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install-mouse-cursor-sync.ps1
 ```
 
-### Option 2: Clone with Git
+### Option 3: Clone with Git
 
 ```powershell
 git clone <repo-url>
@@ -99,10 +109,12 @@ The switch is not literally instantaneous, but it should happen in about a secon
 
 ## File overview
 
+- [install.cmd](./install.cmd): easiest install path for most users, just double-click
 - [install-mouse-cursor-sync.ps1](./install-mouse-cursor-sync.ps1): installs the solution into `%LocalAppData%` and enables autostart
 - [mouse-cursor-button-sync.ps1](./mouse-cursor-button-sync.ps1): background sync process
 - [mirror-cursor.ps1](./mirror-cursor.ps1): generates a mirrored `.cur` file while preserving the hotspot
 - [restore-cursor.ps1](./restore-cursor.ps1): restores the original arrow cursor
+- [uninstall.cmd](./uninstall.cmd): easiest uninstall path for most users, just double-click
 - [uninstall-mouse-cursor-sync.ps1](./uninstall-mouse-cursor-sync.ps1): removes autostart and stops the sync process
 
 ## How to uninstall
