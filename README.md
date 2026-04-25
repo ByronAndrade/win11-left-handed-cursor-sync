@@ -24,6 +24,7 @@ This project fixes that by keeping the cursor direction in sync with the setting
 - watches the Windows `SwapMouseButtons` setting;
 - applies mirrored Arrow and Hand cursors when the primary button is `Right`;
 - restores the original Arrow and Hand cursors when the primary button is `Left`;
+- configures autostart for the current user;
 - starts automatically when you sign in.
 
 ## What it does not do
@@ -85,10 +86,16 @@ The installer:
 2. Detects your current non-mirrored arrow cursor.
 3. Saves that original cursor path to `original-arrow-path.txt`.
 4. Generates mirrored cursor files called `cursor-arrow-right.cur` and `cursor-hand-right.cur`.
-5. Registers an autostart entry in:
+5. Registers autostart for the current user using:
 
 ```text
 HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+```
+
+and a hidden launcher in:
+
+```text
+%AppData%\Microsoft\Windows\Start Menu\Programs\Startup
 ```
 
 6. Applies the correct cursor for your current mouse-button setting.

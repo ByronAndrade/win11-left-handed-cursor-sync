@@ -15,9 +15,14 @@ $runKeyPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $runValueName = 'MouseCursorButtonSync'
 $managedRoot = [System.IO.Path]::GetFullPath($InstallDir)
 $syncScriptPath = Join-Path $managedRoot 'mouse-cursor-button-sync.ps1'
+$startupLauncherPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'MouseCursorButtonSync.vbs'
 
 if (Get-ItemProperty -Path $runKeyPath -Name $runValueName -ErrorAction SilentlyContinue) {
     Remove-ItemProperty -Path $runKeyPath -Name $runValueName
+}
+
+if (Test-Path -LiteralPath $startupLauncherPath) {
+    Remove-Item -LiteralPath $startupLauncherPath -Force
 }
 
 $running = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" |
@@ -34,5 +39,6 @@ if ($RestoreCursorForCurrentButton -and (Test-Path -LiteralPath $syncScriptPath)
 [PSCustomObject]@{
     Uninstalled = $true
     InstallDir = $managedRoot
+    StartupLauncher = $startupLauncherPath
     StoppedProcesses = @($running).Count
 }

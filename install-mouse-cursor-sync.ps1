@@ -4,7 +4,7 @@ Installs the cursor sync solution for the current user.
 
 .DESCRIPTION
 Copies the project files to %LocalAppData%, generates the mirrored cursor,
-creates the per-user autostart entry, and starts the sync process.
+creates redundant per-user autostart entries, and starts the sync process.
 #>
 
 param(
@@ -17,12 +17,16 @@ $ErrorActionPreference = 'Stop'
 $runKeyPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 $runValueName = 'MouseCursorButtonSync'
 $cursorRegistryPath = 'HKCU:\Control Panel\Cursors'
+$startupFolder = [Environment]::GetFolderPath('Startup')
+$startupLauncherName = 'MouseCursorButtonSync.vbs'
 $bundleFiles = @(
     'mirror-cursor.ps1'
     'restore-cursor.ps1'
     'mouse-cursor-button-sync.ps1'
     'install-mouse-cursor-sync.ps1'
     'uninstall-mouse-cursor-sync.ps1'
+    'install.cmd'
+    'uninstall.cmd'
 )
 
 function Get-OriginalCursorPath {
@@ -64,6 +68,21 @@ function Stop-ExistingSyncProcesses {
     return @($running).Count
 }
 
+function Write-StartupLauncher {
+    param(
+        [string]$StartupPath,
+        [string]$SyncScriptPath
+    )
+
+    $quotedScriptPath = $SyncScriptPath.Replace('"', '""')
+    $launcherContent = @(
+        'Set shell = CreateObject("WScript.Shell")'
+        "shell.Run ""powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """"$quotedScriptPath"""" "", 0, False"
+    )
+
+    Set-Content -LiteralPath $StartupPath -Value $launcherContent -Encoding ASCII
+}
+
 foreach ($file in $bundleFiles) {
     $sourcePath = Join-Path $PSScriptRoot $file
     if (-not (Test-Path -LiteralPath $sourcePath)) {
@@ -87,6 +106,7 @@ $installedMirrorScriptPath = Join-Path $installDir 'mirror-cursor.ps1'
 $installedMirroredArrowPath = Join-Path $installDir 'cursor-arrow-right.cur'
 $installedMirroredHandPath = Join-Path $installDir 'cursor-hand-right.cur'
 $installedSyncScriptPath = Join-Path $installDir 'mouse-cursor-button-sync.ps1'
+$startupLauncherPath = Join-Path $startupFolder $startupLauncherName
 
 Set-Content -LiteralPath $installedArrowBackupPath -Value $originalArrowPath -Encoding ASCII
 Set-Content -LiteralPath $installedHandBackupPath -Value $originalHandPath -Encoding ASCII
@@ -97,6 +117,7 @@ $stoppedProcesses = Stop-ExistingSyncProcesses
 
 $command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$installedSyncScriptPath`""
 New-ItemProperty -Path $runKeyPath -Name $runValueName -Value $command -PropertyType String -Force | Out-Null
+Write-StartupLauncher -StartupPath $startupLauncherPath -SyncScriptPath $installedSyncScriptPath
 
 & $installedSyncScriptPath -RunOnce | Out-Null
 Start-Process -WindowStyle Hidden -FilePath 'powershell.exe' -ArgumentList @(
@@ -115,5 +136,6 @@ Start-Process -WindowStyle Hidden -FilePath 'powershell.exe' -ArgumentList @(
     MirroredHand = $installedMirroredHandPath
     RunValueName = $runValueName
     Command = $command
+    StartupLauncher = $startupLauncherPath
     StoppedProcesses = $stoppedProcesses
 }
