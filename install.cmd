@@ -18,7 +18,7 @@ if not "%exit_code%"=="0" (
 )
 
 echo Installation completed successfully.
-echo You can now change "Primary mouse button" in Windows settings and the main cursor will follow automatically.
+echo You can now change "Primary mouse button" in Windows settings and the Arrow / Hand cursors will follow automatically.
 echo.
 pause
 exit /b 0

@@ -25,8 +25,15 @@ $bundleFiles = @(
     'uninstall-mouse-cursor-sync.ps1'
 )
 
-function Get-LeftCursorPath {
-    $backupPath = Join-Path $PSScriptRoot 'original-arrow-path.txt'
+function Get-OriginalCursorPath {
+    param(
+        [string]$CursorName,
+        [string]$BackupFileName,
+        [string]$MirroredFileName,
+        [string]$FallbackPath
+    )
+
+    $backupPath = Join-Path $PSScriptRoot $BackupFileName
     if (Test-Path -LiteralPath $backupPath) {
         $path = (Get-Content -LiteralPath $backupPath -Raw).Trim()
         if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
@@ -34,16 +41,16 @@ function Get-LeftCursorPath {
         }
     }
 
-    $currentCursor = (Get-ItemProperty -Path $cursorRegistryPath).Arrow
+    $currentCursor = (Get-ItemProperty -Path $cursorRegistryPath).$CursorName
     if (
         -not [string]::IsNullOrWhiteSpace($currentCursor) -and
         (Test-Path -LiteralPath $currentCursor) -and
-        ([System.IO.Path]::GetFileName($currentCursor) -ne 'cursor-arrow-right.cur')
+        ([System.IO.Path]::GetFileName($currentCursor) -ne $MirroredFileName)
     ) {
         return $currentCursor
     }
 
-    return (Join-Path $env:SystemRoot 'Cursors\aero_arrow.cur')
+    return $FallbackPath
 }
 
 function Stop-ExistingSyncProcesses {
@@ -71,14 +78,20 @@ foreach ($file in $bundleFiles) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $installDir $file) -Force
 }
 
-$leftCursor = Get-LeftCursorPath
-$installedBackupPath = Join-Path $installDir 'original-arrow-path.txt'
+$originalArrowPath = Get-OriginalCursorPath -CursorName 'Arrow' -BackupFileName 'original-arrow-path.txt' -MirroredFileName 'cursor-arrow-right.cur' -FallbackPath (Join-Path $env:SystemRoot 'Cursors\aero_arrow.cur')
+$originalHandPath = Get-OriginalCursorPath -CursorName 'Hand' -BackupFileName 'original-hand-path.txt' -MirroredFileName 'cursor-hand-right.cur' -FallbackPath (Join-Path $env:SystemRoot 'Cursors\aero_link.cur')
+
+$installedArrowBackupPath = Join-Path $installDir 'original-arrow-path.txt'
+$installedHandBackupPath = Join-Path $installDir 'original-hand-path.txt'
 $installedMirrorScriptPath = Join-Path $installDir 'mirror-cursor.ps1'
-$installedMirroredCursorPath = Join-Path $installDir 'cursor-arrow-right.cur'
+$installedMirroredArrowPath = Join-Path $installDir 'cursor-arrow-right.cur'
+$installedMirroredHandPath = Join-Path $installDir 'cursor-hand-right.cur'
 $installedSyncScriptPath = Join-Path $installDir 'mouse-cursor-button-sync.ps1'
 
-Set-Content -LiteralPath $installedBackupPath -Value $leftCursor -Encoding ASCII
-& $installedMirrorScriptPath -SourceCursor $leftCursor -OutputCursor $installedMirroredCursorPath | Out-Null
+Set-Content -LiteralPath $installedArrowBackupPath -Value $originalArrowPath -Encoding ASCII
+Set-Content -LiteralPath $installedHandBackupPath -Value $originalHandPath -Encoding ASCII
+& $installedMirrorScriptPath -SourceCursor $originalArrowPath -OutputCursor $installedMirroredArrowPath | Out-Null
+& $installedMirrorScriptPath -SourceCursor $originalHandPath -OutputCursor $installedMirroredHandPath | Out-Null
 
 $stoppedProcesses = Stop-ExistingSyncProcesses
 
@@ -96,8 +109,10 @@ Start-Process -WindowStyle Hidden -FilePath 'powershell.exe' -ArgumentList @(
 [PSCustomObject]@{
     Installed = $true
     InstallDir = $installDir
-    LeftCursor = $leftCursor
-    MirroredCursor = $installedMirroredCursorPath
+    OriginalArrow = $originalArrowPath
+    OriginalHand = $originalHandPath
+    MirroredArrow = $installedMirroredArrowPath
+    MirroredHand = $installedMirroredHandPath
     RunValueName = $runValueName
     Command = $command
     StoppedProcesses = $stoppedProcesses

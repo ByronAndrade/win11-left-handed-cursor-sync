@@ -19,9 +19,19 @@ $ErrorActionPreference = 'Stop'
 $script:MutexName = 'Local\MouseCursorButtonSync'
 $script:CursorRegistryPath = 'HKCU:\Control Panel\Cursors'
 $script:MouseRegistryPath = 'HKCU:\Control Panel\Mouse'
-$script:BackupPath = Join-Path $PSScriptRoot 'original-arrow-path.txt'
-$script:MirroredCursorPath = Join-Path $PSScriptRoot 'cursor-arrow-right.cur'
 $script:MirrorScriptPath = Join-Path $PSScriptRoot 'mirror-cursor.ps1'
+$script:CursorSpecs = @(
+    @{
+        Name = 'Arrow'
+        BackupPath = (Join-Path $PSScriptRoot 'original-arrow-path.txt')
+        MirroredPath = (Join-Path $PSScriptRoot 'cursor-arrow-right.cur')
+    }
+    @{
+        Name = 'Hand'
+        BackupPath = (Join-Path $PSScriptRoot 'original-hand-path.txt')
+        MirroredPath = (Join-Path $PSScriptRoot 'cursor-hand-right.cur')
+    }
+)
 
 function Reload-Cursors {
     if (-not ('CursorNativeMethods' -as [type])) {
@@ -48,12 +58,29 @@ public static class CursorNativeMethods
     }
 }
 
-function Get-LeftCursorPath {
-    if (-not (Test-Path -LiteralPath $script:BackupPath)) {
-        throw "Original cursor backup not found at $($script:BackupPath)."
+function Get-CursorSpec {
+    param(
+        [string]$CursorName
+    )
+
+    return $script:CursorSpecs | Where-Object { $_.Name -eq $CursorName } | Select-Object -First 1
+}
+
+function Get-OriginalCursorPath {
+    param(
+        [string]$CursorName
+    )
+
+    $cursorSpec = Get-CursorSpec -CursorName $CursorName
+    if ($null -eq $cursorSpec) {
+        throw "Cursor spec not found for $CursorName."
     }
 
-    $path = (Get-Content -LiteralPath $script:BackupPath -Raw).Trim()
+    if (-not (Test-Path -LiteralPath $cursorSpec.BackupPath)) {
+        throw "Original cursor backup not found at $($cursorSpec.BackupPath)."
+    }
+
+    $path = (Get-Content -LiteralPath $cursorSpec.BackupPath -Raw).Trim()
     if ([string]::IsNullOrWhiteSpace($path)) {
         throw "The original cursor backup file is empty."
     }
@@ -62,45 +89,73 @@ function Get-LeftCursorPath {
 }
 
 function Ensure-MirroredCursor {
-    $leftCursor = Get-LeftCursorPath
+    param(
+        [string]$CursorName
+    )
+
+    $cursorSpec = Get-CursorSpec -CursorName $CursorName
+    if ($null -eq $cursorSpec) {
+        throw "Cursor spec not found for $CursorName."
+    }
+
+    $leftCursor = Get-OriginalCursorPath -CursorName $CursorName
 
     if (-not (Test-Path -LiteralPath $script:MirrorScriptPath)) {
         throw "Mirror script not found at $($script:MirrorScriptPath)."
     }
 
-    $needsRefresh = -not (Test-Path -LiteralPath $script:MirroredCursorPath)
+    $needsRefresh = -not (Test-Path -LiteralPath $cursorSpec.MirroredPath)
     if (-not $needsRefresh) {
         $leftTime = (Get-Item -LiteralPath $leftCursor).LastWriteTimeUtc
-        $mirrorTime = (Get-Item -LiteralPath $script:MirroredCursorPath).LastWriteTimeUtc
+        $mirrorTime = (Get-Item -LiteralPath $cursorSpec.MirroredPath).LastWriteTimeUtc
         $needsRefresh = $mirrorTime -lt $leftTime
     }
 
     if ($needsRefresh) {
-        & $script:MirrorScriptPath -SourceCursor $leftCursor -OutputCursor $script:MirroredCursorPath | Out-Null
+        & $script:MirrorScriptPath -SourceCursor $leftCursor -OutputCursor $cursorSpec.MirroredPath | Out-Null
     }
 
-    return $script:MirroredCursorPath
+    return $cursorSpec.MirroredPath
 }
 
-function Get-DesiredCursorPath {
+function Get-DesiredCursorMap {
     $swapValue = (Get-ItemProperty -Path $script:MouseRegistryPath).SwapMouseButtons
-    if ([string]$swapValue -eq '1') {
-        return Ensure-MirroredCursor
+    $useMirroredCursors = [string]$swapValue -eq '1'
+
+    $desired = @{}
+    foreach ($cursorSpec in $script:CursorSpecs) {
+        if ($useMirroredCursors) {
+            $desired[$cursorSpec.Name] = Ensure-MirroredCursor -CursorName $cursorSpec.Name
+        }
+        else {
+            $desired[$cursorSpec.Name] = Get-OriginalCursorPath -CursorName $cursorSpec.Name
+        }
     }
 
-    return Get-LeftCursorPath
+    return $desired
 }
 
-function Sync-Cursor {
-    $desiredCursor = Get-DesiredCursorPath
-    $currentCursor = (Get-ItemProperty -Path $script:CursorRegistryPath).Arrow
+function Sync-Cursors {
+    $desiredCursorMap = Get-DesiredCursorMap
+    $currentCursorValues = Get-ItemProperty -Path $script:CursorRegistryPath
+    $needsReload = $false
 
-    if ($currentCursor -ne $desiredCursor) {
-        Set-ItemProperty -Path $script:CursorRegistryPath -Name Arrow -Value $desiredCursor
+    foreach ($cursorSpec in $script:CursorSpecs) {
+        $cursorName = $cursorSpec.Name
+        $desiredCursor = $desiredCursorMap[$cursorName]
+        $currentCursor = $currentCursorValues.$cursorName
+
+        if ($currentCursor -ne $desiredCursor) {
+            Set-ItemProperty -Path $script:CursorRegistryPath -Name $cursorName -Value $desiredCursor
+            $needsReload = $true
+        }
+    }
+
+    if ($needsReload) {
         Reload-Cursors
     }
 
-    return $desiredCursor
+    return $desiredCursorMap
 }
 
 $createdNew = $false
@@ -112,12 +167,12 @@ if (-not $createdNew) {
 
 try {
     if ($RunOnce) {
-        Sync-Cursor | Out-Null
+        Sync-Cursors | Out-Null
         return
     }
 
     while ($true) {
-        Sync-Cursor | Out-Null
+        Sync-Cursors | Out-Null
         Start-Sleep -Milliseconds $PollMilliseconds
     }
 }

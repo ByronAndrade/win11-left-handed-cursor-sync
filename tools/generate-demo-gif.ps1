@@ -167,14 +167,14 @@ for ($frame = 0; $frame -lt $totalFrames; $frame++) {
     $rightSelected = $ease -ge 0.5
 
     Draw-Text -Graphics $graphics -Text 'Windows 11 left-handed cursor sync' -Font $titleFont -Brush $textPrimary -X 92 -Y 64
-    Draw-Text -Graphics $graphics -Text 'The main cursor follows the Primary mouse button setting automatically.' -Font $bodyFont -Brush $textMuted -X 92 -Y 108
+    Draw-Text -Graphics $graphics -Text 'The main cursor and link hand follow the Primary mouse button setting automatically.' -Font $bodyFont -Brush $textMuted -X 92 -Y 108
 
     $shadowY = 170
     Draw-RoundedRectangle -Graphics $graphics -Brush $shadowBrush -Pen $null -X 86 -Y ($shadowY + 10) -Width 1028 -Height 394 -Radius 28
     Draw-RoundedRectangle -Graphics $graphics -Brush $cardBrush -Pen $cardPen -X 86 -Y $shadowY -Width 1028 -Height 394 -Radius 28
 
     Draw-Text -Graphics $graphics -Text 'Primary mouse button' -Font $buttonFont -Brush $textPrimary -X 132 -Y 220
-    Draw-Text -Graphics $graphics -Text 'When set to Right, the main cursor points right. When set back to Left, the normal arrow returns.' -Font $smallFont -Brush $textMuted -X 132 -Y 256
+    Draw-Text -Graphics $graphics -Text 'When set to Right, the main cursor and link hand point right. When set back to Left, the default cursors return.' -Font $smallFont -Brush $textMuted -X 132 -Y 256
 
     $pillX = 770
     $pillY = 214

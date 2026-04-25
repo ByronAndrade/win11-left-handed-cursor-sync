@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
-Restores the original arrow cursor saved during installation.
+Restores the original Arrow and Hand cursors saved during installation.
 #>
 
 param(
-    [string]$BackupPath = (Join-Path $PSScriptRoot 'original-arrow-path.txt')
+    [string]$ArrowBackupPath = (Join-Path $PSScriptRoot 'original-arrow-path.txt'),
+    [string]$HandBackupPath = (Join-Path $PSScriptRoot 'original-hand-path.txt')
 )
 
 Set-StrictMode -Version Latest
@@ -35,19 +36,34 @@ public static class CursorNativeMethods
     }
 }
 
-if (-not (Test-Path -LiteralPath $BackupPath)) {
-    throw "Backup file not found: $BackupPath"
+if (-not (Test-Path -LiteralPath $ArrowBackupPath)) {
+    throw "Arrow backup file not found: $ArrowBackupPath"
 }
 
-$originalCursor = (Get-Content -LiteralPath $BackupPath -Raw).Trim()
-if ([string]::IsNullOrWhiteSpace($originalCursor)) {
-    throw "The backup file is empty."
+$originalArrow = (Get-Content -LiteralPath $ArrowBackupPath -Raw).Trim()
+if ([string]::IsNullOrWhiteSpace($originalArrow)) {
+    throw "The Arrow backup file is empty."
 }
 
-Set-ItemProperty -Path 'HKCU:\Control Panel\Cursors' -Name Arrow -Value $originalCursor
+$handBackupAvailable = Test-Path -LiteralPath $HandBackupPath
+$originalHand = $null
+if ($handBackupAvailable) {
+    $originalHand = (Get-Content -LiteralPath $HandBackupPath -Raw).Trim()
+    if ([string]::IsNullOrWhiteSpace($originalHand)) {
+        throw "The Hand backup file is empty."
+    }
+}
+
+Set-ItemProperty -Path 'HKCU:\Control Panel\Cursors' -Name Arrow -Value $originalArrow
+if ($handBackupAvailable) {
+    Set-ItemProperty -Path 'HKCU:\Control Panel\Cursors' -Name Hand -Value $originalHand
+}
+
 Reload-Cursors
 
 [PSCustomObject]@{
-    RestoredCursor = $originalCursor
-    BackupPath = $BackupPath
+    RestoredArrow = $originalArrow
+    RestoredHand = $originalHand
+    ArrowBackupPath = $ArrowBackupPath
+    HandBackupPath = $HandBackupPath
 }

@@ -1,6 +1,6 @@
 # Win11 Left-Handed Cursor Sync
 
-Automatically flips the Windows mouse cursor when the primary mouse button is set to `Right`, and restores the default cursor when it is set back to `Left`.
+Automatically flips the Windows main arrow cursor and link-hand cursor when the primary mouse button is set to `Right`, and restores the default cursors when it is set back to `Left`.
 
 This project exists for left-handed mouse users who want the pointer direction to match the actual primary button setting.
 
@@ -22,8 +22,8 @@ This project fixes that by keeping the cursor direction in sync with the setting
 - creates a horizontally mirrored copy of your current default arrow cursor;
 - stores the installed files in `%LocalAppData%\MouseCursorButtonSync`;
 - watches the Windows `SwapMouseButtons` setting;
-- applies the mirrored cursor when the primary button is `Right`;
-- restores the original cursor when the primary button is `Left`;
+- applies mirrored Arrow and Hand cursors when the primary button is `Right`;
+- restores the original Arrow and Hand cursors when the primary button is `Left`;
 - starts automatically when you sign in.
 
 ## What it does not do
@@ -33,7 +33,7 @@ This project fixes that by keeping the cursor direction in sync with the setting
 - it does **not** install third-party software;
 - it does **not** change every possible cursor role in Windows.
 
-Right now, it syncs the main arrow cursor (`Arrow`), which is the part most people notice.
+Right now, it syncs the main arrow cursor (`Arrow`) and the link-hand cursor (`Hand`).
 
 ## Requirements
 
@@ -84,7 +84,7 @@ The installer:
 
 2. Detects your current non-mirrored arrow cursor.
 3. Saves that original cursor path to `original-arrow-path.txt`.
-4. Generates a mirrored cursor file called `cursor-arrow-right.cur`.
+4. Generates mirrored cursor files called `cursor-arrow-right.cur` and `cursor-hand-right.cur`.
 5. Registers an autostart entry in:
 
 ```text
@@ -111,9 +111,9 @@ The switch is not literally instantaneous, but it should happen in about a secon
 
 - [install.cmd](./install.cmd): easiest install path for most users, just double-click
 - [install-mouse-cursor-sync.ps1](./install-mouse-cursor-sync.ps1): installs the solution into `%LocalAppData%` and enables autostart
-- [mouse-cursor-button-sync.ps1](./mouse-cursor-button-sync.ps1): background sync process
+- [mouse-cursor-button-sync.ps1](./mouse-cursor-button-sync.ps1): background sync process for both `Arrow` and `Hand`
 - [mirror-cursor.ps1](./mirror-cursor.ps1): generates a mirrored `.cur` file while preserving the hotspot
-- [restore-cursor.ps1](./restore-cursor.ps1): restores the original arrow cursor
+- [restore-cursor.ps1](./restore-cursor.ps1): restores the original `Arrow` and `Hand` cursors
 - [uninstall.cmd](./uninstall.cmd): easiest uninstall path for most users, just double-click
 - [uninstall-mouse-cursor-sync.ps1](./uninstall-mouse-cursor-sync.ps1): removes autostart and stops the sync process
 
@@ -145,14 +145,15 @@ This project uses the following per-user registry keys:
 
 - `HKCU\Control Panel\Mouse\SwapMouseButtons`
 - `HKCU\Control Panel\Cursors\Arrow`
+- `HKCU\Control Panel\Cursors\Hand`
 - `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
 
 ## Safety notes
 
 - This project only changes settings under `HKEY_CURRENT_USER`.
 - It does not overwrite system cursor files.
-- The mirrored cursor is generated from your own current arrow cursor.
-- The original cursor path is saved so the default behavior can be restored.
+- The mirrored cursors are generated from your own current Arrow and Hand cursors.
+- The original cursor paths are saved so the default behavior can be restored.
 
 ## Troubleshooting
 
