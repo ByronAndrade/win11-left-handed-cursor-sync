@@ -1,11 +1,12 @@
 <#
 .SYNOPSIS
-Generates a horizontally mirrored mouse cursor from an existing .cur file.
+Generates a horizontally mirrored mouse cursor from an existing .cur or .ani file.
 
 .DESCRIPTION
 Mirrors every cursor size embedded in the source file and preserves the
-correct hotspot for each size. With -Apply, it also updates the current
-user's Arrow cursor and asks Windows to reload the cursor set immediately.
+correct hotspot for each size. Animated .ani cursors are mirrored frame by
+frame. With -Apply, it also updates the current user's Arrow cursor and asks
+Windows to reload the cursor set immediately.
 #>
 
 param(
@@ -54,39 +55,33 @@ public static class CursorNativeMethods
     }
 }
 
-function Mirror-CursorFile {
+function Mirror-CurBytes {
     param(
-        [string]$InputPath,
-        [string]$OutputPath
+        [byte[]]$Bytes
     )
 
-    if (-not (Test-Path -LiteralPath $InputPath)) {
-        throw "Source cursor not found: $InputPath"
-    }
-
-    $bytes = [System.IO.File]::ReadAllBytes($InputPath)
-    $reserved = [BitConverter]::ToUInt16($bytes, 0)
-    $type = [BitConverter]::ToUInt16($bytes, 2)
-    $count = [BitConverter]::ToUInt16($bytes, 4)
+    $reserved = [BitConverter]::ToUInt16($Bytes, 0)
+    $type = [BitConverter]::ToUInt16($Bytes, 2)
+    $count = [BitConverter]::ToUInt16($Bytes, 4)
 
     if ($reserved -ne 0 -or $type -ne 2) {
         throw "The file is not in the expected .cur format."
     }
 
-    $mirrored = [byte[]]::new($bytes.Length)
-    [Array]::Copy($bytes, $mirrored, $bytes.Length)
+    $mirrored = [byte[]]::new($Bytes.Length)
+    [Array]::Copy($Bytes, $mirrored, $Bytes.Length)
 
     for ($i = 0; $i -lt $count; $i++) {
         $entryOffset = 6 + (16 * $i)
-        $imageOffset = [BitConverter]::ToUInt32($bytes, $entryOffset + 12)
-        $imageSize = [BitConverter]::ToUInt32($bytes, $entryOffset + 8)
+        $imageOffset = [BitConverter]::ToUInt32($Bytes, $entryOffset + 12)
+        $imageSize = [BitConverter]::ToUInt32($Bytes, $entryOffset + 8)
 
-        $headerSize = [BitConverter]::ToUInt32($bytes, $imageOffset)
-        $bitmapWidth = [BitConverter]::ToInt32($bytes, $imageOffset + 4)
-        $bitmapHeight = [BitConverter]::ToInt32($bytes, $imageOffset + 8)
-        $bitCount = [BitConverter]::ToUInt16($bytes, $imageOffset + 14)
-        $compression = [BitConverter]::ToUInt32($bytes, $imageOffset + 16)
-        $hotspotX = [BitConverter]::ToUInt16($bytes, $entryOffset + 4)
+        $headerSize = [BitConverter]::ToUInt32($Bytes, $imageOffset)
+        $bitmapWidth = [BitConverter]::ToInt32($Bytes, $imageOffset + 4)
+        $bitmapHeight = [BitConverter]::ToInt32($Bytes, $imageOffset + 8)
+        $bitCount = [BitConverter]::ToUInt16($Bytes, $imageOffset + 14)
+        $compression = [BitConverter]::ToUInt32($Bytes, $imageOffset + 16)
+        $hotspotX = [BitConverter]::ToUInt16($Bytes, $entryOffset + 4)
 
         if ($headerSize -lt 40) {
             throw "Unsupported DIB header in cursor image index $i."
@@ -115,7 +110,7 @@ function Mirror-CursorFile {
         $pixelRow = [byte[]]::new($xorRowBytes)
         for ($row = 0; $row -lt $height; $row++) {
             $rowOffset = $pixelStart + ($row * $xorRowBytes)
-            [Array]::Copy($bytes, $rowOffset, $pixelRow, 0, $xorRowBytes)
+            [Array]::Copy($Bytes, $rowOffset, $pixelRow, 0, $xorRowBytes)
 
             for ($x = 0; $x -lt $width; $x++) {
                 $src = $x * 4
@@ -129,7 +124,7 @@ function Mirror-CursorFile {
         $flippedMaskRow = [byte[]]::new($maskRowBytes)
         for ($row = 0; $row -lt $height; $row++) {
             $rowOffset = $maskStart + ($row * $maskRowBytes)
-            [Array]::Copy($bytes, $rowOffset, $maskRow, 0, $maskRowBytes)
+            [Array]::Copy($Bytes, $rowOffset, $maskRow, 0, $maskRowBytes)
             [Array]::Clear($flippedMaskRow, 0, $maskRowBytes)
 
             for ($x = 0; $x -lt $width; $x++) {
@@ -152,13 +147,79 @@ function Mirror-CursorFile {
         Set-UInt16LE -Buffer $mirrored -Offset ($entryOffset + 4) -Value $newHotspotX
     }
 
+    return $mirrored
+}
+
+function Mirror-AniBytes {
+    param(
+        [byte[]]$Bytes
+    )
+
+    if ([Text.Encoding]::ASCII.GetString($Bytes, 0, 4) -ne 'RIFF' -or [Text.Encoding]::ASCII.GetString($Bytes, 8, 4) -ne 'ACON') {
+        throw "The file is not in the expected .ani format."
+    }
+
+    $mirrored = [byte[]]::new($Bytes.Length)
+    [Array]::Copy($Bytes, $mirrored, $Bytes.Length)
+
+    for ($offset = 12; $offset -lt $Bytes.Length;) {
+        $chunkId = [Text.Encoding]::ASCII.GetString($Bytes, $offset, 4)
+        $chunkSize = [BitConverter]::ToUInt32($Bytes, $offset + 4)
+
+        if ($chunkId -eq 'LIST' -and [Text.Encoding]::ASCII.GetString($Bytes, $offset + 8, 4) -eq 'fram') {
+            $listEnd = $offset + 8 + $chunkSize
+            for ($frameOffset = $offset + 12; $frameOffset -lt $listEnd;) {
+                $frameId = [Text.Encoding]::ASCII.GetString($Bytes, $frameOffset, 4)
+                $frameSize = [BitConverter]::ToUInt32($Bytes, $frameOffset + 4)
+
+                if ($frameId -eq 'icon') {
+                    $frameBytes = [byte[]]::new($frameSize)
+                    [Array]::Copy($Bytes, $frameOffset + 8, $frameBytes, 0, $frameSize)
+                    $mirroredFrame = Mirror-CurBytes -Bytes $frameBytes
+                    [Array]::Copy($mirroredFrame, 0, $mirrored, $frameOffset + 8, $frameSize)
+                }
+
+                $frameOffset += 8 + $frameSize
+                if (($frameOffset % 2) -eq 1) {
+                    $frameOffset++
+                }
+            }
+        }
+
+        $offset += 8 + $chunkSize
+        if (($offset % 2) -eq 1) {
+            $offset++
+        }
+    }
+
+    return $mirrored
+}
+
+function Mirror-CursorFile {
+    param(
+        [string]$InputPath,
+        [string]$OutputPath
+    )
+
+    if (-not (Test-Path -LiteralPath $InputPath)) {
+        throw "Source cursor not found: $InputPath"
+    }
+
+    $inputBytes = [System.IO.File]::ReadAllBytes($InputPath)
+    $extension = [System.IO.Path]::GetExtension($InputPath).ToLowerInvariant()
+    switch ($extension) {
+        '.cur' { $mirroredBytes = Mirror-CurBytes -Bytes $inputBytes }
+        '.ani' { $mirroredBytes = Mirror-AniBytes -Bytes $inputBytes }
+        default { throw "Unsupported cursor format: $extension" }
+    }
+
     $outputDirectory = [System.IO.Path]::GetDirectoryName($OutputPath)
     if ([string]::IsNullOrWhiteSpace($outputDirectory)) {
         throw "Could not determine the output directory."
     }
 
     [System.IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
-    [System.IO.File]::WriteAllBytes($OutputPath, $mirrored)
+    [System.IO.File]::WriteAllBytes($OutputPath, $mirroredBytes)
 }
 
 $backupPath = Join-Path $PSScriptRoot 'original-arrow-path.txt'

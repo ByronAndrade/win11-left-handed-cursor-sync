@@ -102,16 +102,27 @@ $originalHandPath = Get-OriginalCursorPath -CursorName 'Hand' -BackupFileName 'o
 
 $installedArrowBackupPath = Join-Path $installDir 'original-arrow-path.txt'
 $installedHandBackupPath = Join-Path $installDir 'original-hand-path.txt'
+$installedHelpBackupPath = Join-Path $installDir 'original-help-path.txt'
+$installedAppStartingBackupPath = Join-Path $installDir 'original-appstarting-path.txt'
 $installedMirrorScriptPath = Join-Path $installDir 'mirror-cursor.ps1'
 $installedMirroredArrowPath = Join-Path $installDir 'cursor-arrow-right.cur'
 $installedMirroredHandPath = Join-Path $installDir 'cursor-hand-right.cur'
+$installedMirroredHelpPath = Join-Path $installDir 'cursor-help-right.cur'
+$installedMirroredAppStartingPath = Join-Path $installDir 'cursor-appstarting-right.ani'
 $installedSyncScriptPath = Join-Path $installDir 'mouse-cursor-button-sync.ps1'
 $startupLauncherPath = Join-Path $startupFolder $startupLauncherName
 
+$originalHelpPath = Get-OriginalCursorPath -CursorName 'Help' -BackupFileName 'original-help-path.txt' -MirroredFileName 'cursor-help-right.cur' -FallbackPath (Join-Path $env:SystemRoot 'Cursors\aero_helpsel.cur')
+$originalAppStartingPath = Get-OriginalCursorPath -CursorName 'AppStarting' -BackupFileName 'original-appstarting-path.txt' -MirroredFileName 'cursor-appstarting-right.ani' -FallbackPath (Join-Path $env:SystemRoot 'Cursors\aero_working.ani')
+
 Set-Content -LiteralPath $installedArrowBackupPath -Value $originalArrowPath -Encoding ASCII
 Set-Content -LiteralPath $installedHandBackupPath -Value $originalHandPath -Encoding ASCII
+Set-Content -LiteralPath $installedHelpBackupPath -Value $originalHelpPath -Encoding ASCII
+Set-Content -LiteralPath $installedAppStartingBackupPath -Value $originalAppStartingPath -Encoding ASCII
 & $installedMirrorScriptPath -SourceCursor $originalArrowPath -OutputCursor $installedMirroredArrowPath | Out-Null
 & $installedMirrorScriptPath -SourceCursor $originalHandPath -OutputCursor $installedMirroredHandPath | Out-Null
+& $installedMirrorScriptPath -SourceCursor $originalHelpPath -OutputCursor $installedMirroredHelpPath | Out-Null
+& $installedMirrorScriptPath -SourceCursor $originalAppStartingPath -OutputCursor $installedMirroredAppStartingPath | Out-Null
 
 $stoppedProcesses = Stop-ExistingSyncProcesses
 
@@ -132,8 +143,12 @@ Start-Process -WindowStyle Hidden -FilePath 'powershell.exe' -ArgumentList @(
     InstallDir = $installDir
     OriginalArrow = $originalArrowPath
     OriginalHand = $originalHandPath
+    OriginalHelp = $originalHelpPath
+    OriginalAppStarting = $originalAppStartingPath
     MirroredArrow = $installedMirroredArrowPath
     MirroredHand = $installedMirroredHandPath
+    MirroredHelp = $installedMirroredHelpPath
+    MirroredAppStarting = $installedMirroredAppStartingPath
     RunValueName = $runValueName
     Command = $command
     StartupLauncher = $startupLauncherPath

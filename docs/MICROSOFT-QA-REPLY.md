@@ -1,8 +1,8 @@
 I ran into the same problem as a left-handed mouse user on Windows 11: switching the primary mouse button to `Right` does not make the standard arrow cursor point to the right.
 
-I put together a small PowerShell-based solution that keeps the main Arrow cursor and Hand cursor in sync with the Windows setting:
+I put together a small PowerShell-based solution that keeps the directional Windows cursors in sync with the mouse setting:
 
-- if `Primary mouse button = Right`, it applies mirrored right-facing Arrow and Hand cursors;
+- if `Primary mouse button = Right`, it applies mirrored right-facing Arrow, Hand, Help, and AppStarting cursors;
 - if `Primary mouse button = Left`, it restores the normal default cursors;
 - it installs per-user, does not replace system files, and survives reboot.
 
@@ -27,6 +27,8 @@ It works by watching:
 - `HKCU\Control Panel\Mouse\SwapMouseButtons`
 - `HKCU\Control Panel\Cursors\Arrow`
 - `HKCU\Control Panel\Cursors\Hand`
+- `HKCU\Control Panel\Cursors\Help`
+- `HKCU\Control Panel\Cursors\AppStarting`
 
 and switching both cursors automatically.
 

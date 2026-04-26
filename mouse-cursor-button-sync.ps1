@@ -31,6 +31,16 @@ $script:CursorSpecs = @(
         BackupPath = (Join-Path $PSScriptRoot 'original-hand-path.txt')
         MirroredPath = (Join-Path $PSScriptRoot 'cursor-hand-right.cur')
     }
+    @{
+        Name = 'Help'
+        BackupPath = (Join-Path $PSScriptRoot 'original-help-path.txt')
+        MirroredPath = (Join-Path $PSScriptRoot 'cursor-help-right.cur')
+    }
+    @{
+        Name = 'AppStarting'
+        BackupPath = (Join-Path $PSScriptRoot 'original-appstarting-path.txt')
+        MirroredPath = (Join-Path $PSScriptRoot 'cursor-appstarting-right.ani')
+    }
 )
 
 function Reload-Cursors {
