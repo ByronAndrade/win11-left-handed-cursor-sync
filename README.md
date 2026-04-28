@@ -24,7 +24,7 @@ This project fixes that by keeping the cursor direction in sync with the setting
 - watches the Windows `SwapMouseButtons` setting;
 - applies mirrored Arrow, Hand, Help, and AppStarting cursors when the primary button is `Right`;
 - restores the original cursors when the primary button is `Left`;
-- configures autostart for the current user;
+- configures silent autostart for the current user;
 - starts automatically when you sign in.
 
 ## What it does not do
@@ -91,20 +91,14 @@ The installer:
 2. Detects your current non-mirrored arrow cursor.
 3. Saves that original cursor path to `original-arrow-path.txt`.
 4. Generates mirrored cursor files for the supported directional cursors, including `cursor-arrow-right.cur`, `cursor-hand-right.cur`, `cursor-help-right.cur`, and `cursor-appstarting-right.ani`.
-5. Registers autostart for the current user using:
-
-```text
-HKCU\Software\Microsoft\Windows\CurrentVersion\Run
-```
-
-and a hidden launcher in:
+5. Registers a hidden launcher in:
 
 ```text
 %AppData%\Microsoft\Windows\Start Menu\Programs\Startup
 ```
 
 6. Applies the correct cursor for your current mouse-button setting.
-7. Starts a small background PowerShell process that keeps the cursor in sync.
+7. Starts a silent background watcher using Windows Script Host, which calls the PowerShell sync script only when the setting changes.
 
 ## How to use it
 
